@@ -2,7 +2,7 @@
 Lädt das Menüe um die Unterpunkte zu erzeugen für die Exportfunktionen
 mit Prüfung ob Nutzer der BU Schkopau/Schkeuditz angemeldet sind
 Christian Langrock
-Version 1.3     12.01.2022
+Version 1.4     02.08.2022
 
 Original Projekt liegt auf GitHub: https://github.com/Actemium-Schkeuditz/EplanConfig
 
@@ -12,6 +12,7 @@ V1.0 verschoben auf gitHUB
 V1.1 integration Documentation Tool
 V1.2 update Aufruf PDF Assistent
 V1.3 Ergänzung der Domain für BU Weil und Büro Achern
+V1.4 Adaption für LKO Electro
 
 */
 
@@ -26,8 +27,8 @@ namespace EplanCMHL.Ausgabe
 {
     class CreateMenue
     {
-        readonly string[] domainName = { @"VED\ORG-AC-deDZ002-BU00103-Users", @"VED\ORG-AC-DEMD001-Users", @"VED\ORG-AC-DEMQ002-Users", @"VED\ORG-AC-DEOG001-Users", @"VED\ORG-AC-DELOE01-Users"}; // hier Domain Nammen der Nutzer eintragen
-                                        // BU Leipzig (Schkeuditz),         BU Magdeburg,                   Schkopau,                   Achern (Büro von Weil),            BU Weil
+        readonly string[] domainName = { @"LKOELECTRO\Daten_Laufwerk_Benutzergruppe"}; //, @"VED\ORG-AC-DEMD001-Users", @"VED\ORG-AC-DEMQ002-Users", @"VED\ORG-AC-DEOG001-Users", @"VED\ORG-AC-DELOE01-Users"}; // hier Domain Nammen der Nutzer eintragen
+                                        // LKO Halle,         BU Magdeburg,                   Schkopau,                   Achern (Büro von Weil),            BU Weil
         // Menü zusammenbauen
         [DeclareMenu]
         public void MenuFunction()
@@ -237,6 +238,7 @@ namespace EplanCMHL.Ausgabe
                         if (grName == group.Translate(typeof(NTAccount)).Value){
                             return true;
                         }
+                       // MessageBox.Show(group.Translate(typeof(NTAccount)).Value);
                     }
                 }
                 return false;
