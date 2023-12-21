@@ -1,9 +1,9 @@
 ﻿// Documentation-Tool.cs
 //
-// Aufruf über einen neuen Menüpunkt "Lesezeichen"
-// im Untermenü "Projekt"
+// Aufruf über einen neuen Menüpunkt "Dokumentations-Tool..."
+// im Hauptmenü "Projekt"
 //
-// Copyright by Frank Schöneck, 2017
+// Copyright by Frank Schöneck, 2017-2018
 //
 // letzte Änderung:
 // V2.0.0, 08.08.2017, Frank Schöneck,	Projektbeginn
@@ -19,9 +19,12 @@
 //										Die Spalten können nun durch anklicken der Spaltenüberschrift sortiert werden
 // V2.4.1, 19.12.2017, Frank Schöneck,	Fehlerbehandlung für Dateikopieren eingefügt.
 //										Beim Zielverzeichnisnamen werden ungültige Zeichen automatisch entfernt
+// V2.4.2, 24.09.2018, Frank Schöneck,	Darstellungsfehler im UI behoben.
+// V2.5.0, 26.09.2018, Frank Schöneck,	Unterstützung von Pfadvariablen hinzugefügt.
+// V2.6.0, 04.12.2018, Frank Schöneck,	Neues System mit Variablen zur Erzeugung der Ablagestruktur eingeführt.
+// V3.0.0, 13.07.2022, Frank Schöneck,	Angepasst an die Ribbon-Technik der EPLAN Plattform 2022.
 //
-// V2.4.1.ACT	16.06.2021 Christian Langrock,	Integration in VINCI Citrix	
-// für Eplan Electric P8, V2.6
+// für Eplan Electric P8, ab Plattform 2022 Update 2
 //
 
 /*
@@ -37,7 +40,7 @@ when you load the script in EPLAN. Having them twice would cause errors.
 using Eplan.EplApi.ApplicationFramework;
 using Eplan.EplApi.Scripting;
 using Eplan.EplApi.Base;
-using Eplan.EplApi.Gui;
+using Eplan.EplApi.Base.SettingNode;
 #endif
 
 /*
@@ -50,7 +53,7 @@ using System.IO;
 using System.Xml;
 using System.Collections;
 using System.Windows.Forms;
-
+using System.Linq;
 
 public partial class frmDocumentationTool : System.Windows.Forms.Form
 {
@@ -69,11 +72,19 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 	private ContextMenuStrip contextMenuListView;
 	private ToolStripMenuItem toolStripMenuItemDocumentOpen;
 	private ColumnHeader columnHersteller;
-	private ToolStripMenuItem toolStripMenuHerstellerVerzeichnis;
-	private ToolStripSeparator toolStripSeparator1;
 	private ColumnHeader columnArtikelnummer;
-	private ToolStripMenuItem toolStripMenuArtikelnummerVerzeichnis;
 	private Button btnExtras;
+	private ToolStripSeparator toolStripSeparator2;
+	private ToolStripMenuItem toolStripMenuItemPfadvariabele;
+	private ColumnHeader columnProductgroup;
+	private TextBox txtAblageStruktur;
+	private Label label2;
+	private ContextMenuStrip contextMenuAblageStruktur;
+	private ToolStripMenuItem toolStripMenuStrukturHersteller;
+	private ToolStripMenuItem toolStripMenuStrukturProduktgruppe;
+	private ToolStripMenuItem toolStripMenuStrukturArtikelnummer;
+	private Button btnAblageStukturWählen;
+	private ToolStripMenuItem toolStripMenuStrukturVerzeichnisebene;
 
 	#region Vom Windows Form-Designer generierter Code
 
@@ -103,236 +114,318 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 	/// </summary>
 	private void InitializeComponent()
 	{
-		this.components = new System.ComponentModel.Container();
-		this.btnAbbrechen = new System.Windows.Forms.Button();
-		this.listView = new System.Windows.Forms.ListView();
-		this.columnFileName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-		this.columnFileDescription = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-		this.columnHersteller = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-		this.columnArtikelnummer = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-		this.contextMenuListView = new System.Windows.Forms.ContextMenuStrip(this.components);
-		this.toolStripMenuItemDocumentOpen = new System.Windows.Forms.ToolStripMenuItem();
-		this.btnKopieren = new System.Windows.Forms.Button();
-		this.txtZielverzeichnis = new System.Windows.Forms.TextBox();
-		this.contextMenuZielverzeichnis = new System.Windows.Forms.ContextMenuStrip(this.components);
-		this.toolStripMenuHerstellerVerzeichnis = new System.Windows.Forms.ToolStripMenuItem();
-		this.toolStripMenuArtikelnummerVerzeichnis = new System.Windows.Forms.ToolStripMenuItem();
-		this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-		this.toolStripMenuItemProjekteVerzeichnis = new System.Windows.Forms.ToolStripMenuItem();
-		this.toolStripMenuItemProjektVerzeichnisstruktur = new System.Windows.Forms.ToolStripMenuItem();
-		this.label1 = new System.Windows.Forms.Label();
-		this.btnOrdnerWählen = new System.Windows.Forms.Button();
-		this.btnOdnerÖffnen = new System.Windows.Forms.Button();
-		this.btnExtras = new System.Windows.Forms.Button();
-		this.contextMenuListView.SuspendLayout();
-		this.contextMenuZielverzeichnis.SuspendLayout();
-		this.SuspendLayout();
-		// 
-		// btnAbbrechen
-		// 
-		this.btnAbbrechen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-		this.btnAbbrechen.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-		this.btnAbbrechen.Location = new System.Drawing.Point(594, 393);
-		this.btnAbbrechen.Name = "btnAbbrechen";
-		this.btnAbbrechen.Size = new System.Drawing.Size(120, 26);
-		this.btnAbbrechen.TabIndex = 6;
-		this.btnAbbrechen.Text = "Abbrechen";
-		this.btnAbbrechen.UseVisualStyleBackColor = true;
-		this.btnAbbrechen.Click += new System.EventHandler(this.btnAbbrechen_Click);
-		// 
-		// listView
-		// 
-		this.listView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-		| System.Windows.Forms.AnchorStyles.Left)
-		| System.Windows.Forms.AnchorStyles.Right)));
-		this.listView.AutoArrange = false;
-		this.listView.CheckBoxes = true;
-		this.listView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+			this.components = new System.ComponentModel.Container();
+			this.btnAbbrechen = new System.Windows.Forms.Button();
+			this.listView = new System.Windows.Forms.ListView();
+			this.columnFileName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.columnFileDescription = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.columnHersteller = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.columnArtikelnummer = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.columnProductgroup = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.contextMenuListView = new System.Windows.Forms.ContextMenuStrip(this.components);
+			this.toolStripMenuItemDocumentOpen = new System.Windows.Forms.ToolStripMenuItem();
+			this.btnKopieren = new System.Windows.Forms.Button();
+			this.txtZielverzeichnis = new System.Windows.Forms.TextBox();
+			this.contextMenuZielverzeichnis = new System.Windows.Forms.ContextMenuStrip(this.components);
+			this.toolStripMenuItemProjekteVerzeichnis = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripMenuItemProjektVerzeichnisstruktur = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+			this.toolStripMenuItemPfadvariabele = new System.Windows.Forms.ToolStripMenuItem();
+			this.label1 = new System.Windows.Forms.Label();
+			this.btnOrdnerWählen = new System.Windows.Forms.Button();
+			this.btnOdnerÖffnen = new System.Windows.Forms.Button();
+			this.btnExtras = new System.Windows.Forms.Button();
+			this.txtAblageStruktur = new System.Windows.Forms.TextBox();
+			this.contextMenuAblageStruktur = new System.Windows.Forms.ContextMenuStrip(this.components);
+			this.toolStripMenuStrukturVerzeichnisebene = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripMenuStrukturHersteller = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripMenuStrukturProduktgruppe = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripMenuStrukturArtikelnummer = new System.Windows.Forms.ToolStripMenuItem();
+			this.label2 = new System.Windows.Forms.Label();
+			this.btnAblageStukturWählen = new System.Windows.Forms.Button();
+			this.contextMenuListView.SuspendLayout();
+			this.contextMenuZielverzeichnis.SuspendLayout();
+			this.contextMenuAblageStruktur.SuspendLayout();
+			this.SuspendLayout();
+			// 
+			// btnAbbrechen
+			// 
+			this.btnAbbrechen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.btnAbbrechen.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+			this.btnAbbrechen.Location = new System.Drawing.Point(594, 381);
+			this.btnAbbrechen.Name = "btnAbbrechen";
+			this.btnAbbrechen.Size = new System.Drawing.Size(120, 26);
+			this.btnAbbrechen.TabIndex = 8;
+			this.btnAbbrechen.Text = "Abbrechen";
+			this.btnAbbrechen.UseVisualStyleBackColor = true;
+			this.btnAbbrechen.Click += new System.EventHandler(this.btnAbbrechen_Click);
+			// 
+			// listView
+			// 
+			this.listView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.listView.AutoArrange = false;
+			this.listView.CheckBoxes = true;
+			this.listView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.columnFileName,
             this.columnFileDescription,
             this.columnHersteller,
-            this.columnArtikelnummer});
-		this.listView.ContextMenuStrip = this.contextMenuListView;
-		this.listView.FullRowSelect = true;
-		this.listView.HideSelection = false;
-		this.listView.Location = new System.Drawing.Point(12, 12);
-		this.listView.Name = "listView";
-		this.listView.ShowGroups = false;
-		this.listView.Size = new System.Drawing.Size(700, 300);
-		this.listView.Sorting = System.Windows.Forms.SortOrder.Ascending;
-		this.listView.TabIndex = 1;
-		this.listView.UseCompatibleStateImageBehavior = false;
-		this.listView.View = System.Windows.Forms.View.Details;
-		this.listView.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listView_ColumnClick);
-		// 
-		// columnFileName
-		// 
-		this.columnFileName.Text = "Dokument";
-		this.columnFileName.Width = 540;
-		// 
-		// columnFileDescription
-		// 
-		this.columnFileDescription.Text = "Beschreibung";
-		this.columnFileDescription.Width = 150;
-		// 
-		// columnHersteller
-		// 
-		this.columnHersteller.Text = "Hersteller";
-		this.columnHersteller.Width = 150;
-		// 
-		// columnArtikelnummer
-		// 
-		this.columnArtikelnummer.Text = "Artikelnummer";
-		this.columnArtikelnummer.Width = 150;
-		// 
-		// contextMenuListView
-		// 
-		this.contextMenuListView.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.columnArtikelnummer,
+            this.columnProductgroup});
+			this.listView.ContextMenuStrip = this.contextMenuListView;
+			this.listView.FullRowSelect = true;
+			this.listView.HideSelection = false;
+			this.listView.Location = new System.Drawing.Point(12, 12);
+			this.listView.Name = "listView";
+			this.listView.ShowGroups = false;
+			this.listView.Size = new System.Drawing.Size(700, 254);
+			this.listView.Sorting = System.Windows.Forms.SortOrder.Ascending;
+			this.listView.TabIndex = 1;
+			this.listView.UseCompatibleStateImageBehavior = false;
+			this.listView.View = System.Windows.Forms.View.Details;
+			this.listView.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listView_ColumnClick);
+			// 
+			// columnFileName
+			// 
+			this.columnFileName.Text = "Dokument";
+			this.columnFileName.Width = 540;
+			// 
+			// columnFileDescription
+			// 
+			this.columnFileDescription.Text = "Beschreibung";
+			this.columnFileDescription.Width = 150;
+			// 
+			// columnHersteller
+			// 
+			this.columnHersteller.Text = "Hersteller";
+			this.columnHersteller.Width = 150;
+			// 
+			// columnArtikelnummer
+			// 
+			this.columnArtikelnummer.Text = "Artikelnummer";
+			this.columnArtikelnummer.Width = 150;
+			// 
+			// columnProductgroup
+			// 
+			this.columnProductgroup.Text = "Produktgruppe";
+			this.columnProductgroup.Width = 150;
+			// 
+			// contextMenuListView
+			// 
+			this.contextMenuListView.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripMenuItemDocumentOpen});
-		this.contextMenuListView.Name = "contextMenuListView";
-		this.contextMenuListView.Size = new System.Drawing.Size(169, 26);
-		this.contextMenuListView.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuListView_Opening);
-		// 
-		// toolStripMenuItemDocumentOpen
-		// 
-		this.toolStripMenuItemDocumentOpen.Name = "toolStripMenuItemDocumentOpen";
-		this.toolStripMenuItemDocumentOpen.Size = new System.Drawing.Size(168, 22);
-		this.toolStripMenuItemDocumentOpen.Text = "Dokument öffnen";
-		this.toolStripMenuItemDocumentOpen.Click += new System.EventHandler(this.toolStripMenuItemDocumentOpen_Click);
-		// 
-		// btnKopieren
-		// 
-		this.btnKopieren.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-		this.btnKopieren.Location = new System.Drawing.Point(457, 393);
-		this.btnKopieren.Name = "btnKopieren";
-		this.btnKopieren.Size = new System.Drawing.Size(120, 26);
-		this.btnKopieren.TabIndex = 5;
-		this.btnKopieren.Text = "&Kopieren";
-		this.btnKopieren.UseVisualStyleBackColor = true;
-		this.btnKopieren.Click += new System.EventHandler(this.btnKopieren_Click);
-		// 
-		// txtZielverzeichnis
-		// 
-		this.txtZielverzeichnis.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
-		| System.Windows.Forms.AnchorStyles.Right)));
-		this.txtZielverzeichnis.ContextMenuStrip = this.contextMenuZielverzeichnis;
-		this.txtZielverzeichnis.Location = new System.Drawing.Point(12, 341);
-		this.txtZielverzeichnis.Name = "txtZielverzeichnis";
-		this.txtZielverzeichnis.Size = new System.Drawing.Size(669, 20);
-		this.txtZielverzeichnis.TabIndex = 2;
-		// 
-		// contextMenuZielverzeichnis
-		// 
-		this.contextMenuZielverzeichnis.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripMenuHerstellerVerzeichnis,
-            this.toolStripMenuArtikelnummerVerzeichnis,
-            this.toolStripSeparator1,
+			this.contextMenuListView.Name = "contextMenuListView";
+			this.contextMenuListView.Size = new System.Drawing.Size(169, 26);
+			this.contextMenuListView.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuListView_Opening);
+			// 
+			// toolStripMenuItemDocumentOpen
+			// 
+			this.toolStripMenuItemDocumentOpen.Name = "toolStripMenuItemDocumentOpen";
+			this.toolStripMenuItemDocumentOpen.Size = new System.Drawing.Size(168, 22);
+			this.toolStripMenuItemDocumentOpen.Text = "Dokument öffnen";
+			this.toolStripMenuItemDocumentOpen.Click += new System.EventHandler(this.toolStripMenuItemDocumentOpen_Click);
+			// 
+			// btnKopieren
+			// 
+			this.btnKopieren.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.btnKopieren.Location = new System.Drawing.Point(457, 381);
+			this.btnKopieren.Name = "btnKopieren";
+			this.btnKopieren.Size = new System.Drawing.Size(120, 26);
+			this.btnKopieren.TabIndex = 7;
+			this.btnKopieren.Text = "&Kopieren";
+			this.btnKopieren.UseVisualStyleBackColor = true;
+			this.btnKopieren.Click += new System.EventHandler(this.btnKopieren_Click);
+			// 
+			// txtZielverzeichnis
+			// 
+			this.txtZielverzeichnis.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.txtZielverzeichnis.ContextMenuStrip = this.contextMenuZielverzeichnis;
+			this.txtZielverzeichnis.Location = new System.Drawing.Point(12, 338);
+			this.txtZielverzeichnis.Name = "txtZielverzeichnis";
+			this.txtZielverzeichnis.Size = new System.Drawing.Size(669, 20);
+			this.txtZielverzeichnis.TabIndex = 4;
+			// 
+			// contextMenuZielverzeichnis
+			// 
+			this.contextMenuZielverzeichnis.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripMenuItemProjekteVerzeichnis,
-            this.toolStripMenuItemProjektVerzeichnisstruktur});
-		this.contextMenuZielverzeichnis.Name = "contextMenuZielverzeichnis";
-		this.contextMenuZielverzeichnis.Size = new System.Drawing.Size(340, 98);
-		// 
-		// toolStripMenuHerstellerVerzeichnis
-		// 
-		this.toolStripMenuHerstellerVerzeichnis.CheckOnClick = true;
-		this.toolStripMenuHerstellerVerzeichnis.Name = "toolStripMenuHerstellerVerzeichnis";
-		this.toolStripMenuHerstellerVerzeichnis.Size = new System.Drawing.Size(339, 22);
-		this.toolStripMenuHerstellerVerzeichnis.Text = "Hersteller zur Verzeichnisstruktur hinzufügen";
-		// 
-		// toolStripMenuArtikelnummerVerzeichnis
-		// 
-		this.toolStripMenuArtikelnummerVerzeichnis.CheckOnClick = true;
-		this.toolStripMenuArtikelnummerVerzeichnis.Name = "toolStripMenuArtikelnummerVerzeichnis";
-		this.toolStripMenuArtikelnummerVerzeichnis.Size = new System.Drawing.Size(339, 22);
-		this.toolStripMenuArtikelnummerVerzeichnis.Text = "Artikelnummer zur Verzeichnisstruktur hinzufügen";
-		// 
-		// toolStripSeparator1
-		// 
-		this.toolStripSeparator1.Name = "toolStripSeparator1";
-		this.toolStripSeparator1.Size = new System.Drawing.Size(336, 6);
-		// 
-		// toolStripMenuItemProjekteVerzeichnis
-		// 
-		this.toolStripMenuItemProjekteVerzeichnis.Name = "toolStripMenuItemProjekteVerzeichnis";
-		this.toolStripMenuItemProjekteVerzeichnis.Size = new System.Drawing.Size(339, 22);
-		this.toolStripMenuItemProjekteVerzeichnis.Text = "Projekt-Verzeichnisstruktur hinzufügen";
-		this.toolStripMenuItemProjekteVerzeichnis.Click += new System.EventHandler(this.toolStripMenuItemProjekteVerzeichnis_Click);
-		// 
-		// toolStripMenuItemProjektVerzeichnisstruktur
-		// 
-		this.toolStripMenuItemProjektVerzeichnisstruktur.Name = "toolStripMenuItemProjektVerzeichnisstruktur";
-		this.toolStripMenuItemProjektVerzeichnisstruktur.Size = new System.Drawing.Size(339, 22);
-		this.toolStripMenuItemProjektVerzeichnisstruktur.Text = "Komplette Projekt-Verzeichnisstruktur hinzufügen";
-		this.toolStripMenuItemProjektVerzeichnisstruktur.Click += new System.EventHandler(this.toolStripMenuItemProjektVerzeichnisstruktur_Click);
-		// 
-		// label1
-		// 
-		this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-		this.label1.AutoSize = true;
-		this.label1.Location = new System.Drawing.Point(9, 325);
-		this.label1.Name = "label1";
-		this.label1.Size = new System.Drawing.Size(80, 13);
-		this.label1.TabIndex = 4;
-		this.label1.Text = "Zielverzeichnis:";
-		// 
-		// btnOrdnerWählen
-		// 
-		this.btnOrdnerWählen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-		this.btnOrdnerWählen.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-		this.btnOrdnerWählen.Location = new System.Drawing.Point(684, 338);
-		this.btnOrdnerWählen.Name = "btnOrdnerWählen";
-		this.btnOrdnerWählen.Size = new System.Drawing.Size(28, 24);
-		this.btnOrdnerWählen.TabIndex = 3;
-		this.btnOrdnerWählen.Text = "...";
-		this.btnOrdnerWählen.UseVisualStyleBackColor = true;
-		this.btnOrdnerWählen.Click += new System.EventHandler(this.btnOrdnerWählen_Click);
-		// 
-		// btnOdnerÖffnen
-		// 
-		this.btnOdnerÖffnen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-		this.btnOdnerÖffnen.Location = new System.Drawing.Point(12, 393);
-		this.btnOdnerÖffnen.Name = "btnOdnerÖffnen";
-		this.btnOdnerÖffnen.Size = new System.Drawing.Size(120, 26);
-		this.btnOdnerÖffnen.TabIndex = 7;
-		this.btnOdnerÖffnen.Text = "Verzeichnis &öffnen";
-		this.btnOdnerÖffnen.UseVisualStyleBackColor = true;
-		this.btnOdnerÖffnen.Click += new System.EventHandler(this.btnOdnerÖffnen_Click);
-		// 
-		// btnExtras
-		// 
-		this.btnExtras.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-		this.btnExtras.Location = new System.Drawing.Point(318, 393);
-		this.btnExtras.Name = "btnExtras";
-		this.btnExtras.Size = new System.Drawing.Size(120, 26);
-		this.btnExtras.TabIndex = 4;
-		this.btnExtras.Text = "E&xtras";
-		this.btnExtras.UseVisualStyleBackColor = true;
-		this.btnExtras.Click += new System.EventHandler(this.btnExtras_Click);
-		// 
-		// frmDocumentationTool
-		// 
-		this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-		this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-		this.CancelButton = this.btnAbbrechen;
-		this.ClientSize = new System.Drawing.Size(726, 431);
-		this.Controls.Add(this.btnExtras);
-		this.Controls.Add(this.btnOdnerÖffnen);
-		this.Controls.Add(this.btnOrdnerWählen);
-		this.Controls.Add(this.label1);
-		this.Controls.Add(this.txtZielverzeichnis);
-		this.Controls.Add(this.btnKopieren);
-		this.Controls.Add(this.listView);
-		this.Controls.Add(this.btnAbbrechen);
-		this.MinimizeBox = false;
-		this.Name = "frmDocumentationTool";
-		this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-		this.Text = "Documentation-Tool";
-		this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmDocumentationTool_FormClosing);
-		this.Load += new System.EventHandler(this.frmDocumentationTool_Load);
-		this.contextMenuListView.ResumeLayout(false);
-		this.contextMenuZielverzeichnis.ResumeLayout(false);
-		this.ResumeLayout(false);
-		this.PerformLayout();
+            this.toolStripMenuItemProjektVerzeichnisstruktur,
+            this.toolStripSeparator2,
+            this.toolStripMenuItemPfadvariabele});
+			this.contextMenuZielverzeichnis.Name = "contextMenuZielverzeichnis";
+			this.contextMenuZielverzeichnis.Size = new System.Drawing.Size(337, 76);
+			// 
+			// toolStripMenuItemProjekteVerzeichnis
+			// 
+			this.toolStripMenuItemProjekteVerzeichnis.Name = "toolStripMenuItemProjekteVerzeichnis";
+			this.toolStripMenuItemProjekteVerzeichnis.Size = new System.Drawing.Size(336, 22);
+			this.toolStripMenuItemProjekteVerzeichnis.Text = "Projekt-Verzeichnisstruktur hinzufügen";
+			this.toolStripMenuItemProjekteVerzeichnis.Click += new System.EventHandler(this.toolStripMenuItemProjekteVerzeichnis_Click);
+			// 
+			// toolStripMenuItemProjektVerzeichnisstruktur
+			// 
+			this.toolStripMenuItemProjektVerzeichnisstruktur.Name = "toolStripMenuItemProjektVerzeichnisstruktur";
+			this.toolStripMenuItemProjektVerzeichnisstruktur.Size = new System.Drawing.Size(336, 22);
+			this.toolStripMenuItemProjektVerzeichnisstruktur.Text = "Komplette Projekt-Verzeichnisstruktur hinzufügen";
+			this.toolStripMenuItemProjektVerzeichnisstruktur.Click += new System.EventHandler(this.toolStripMenuItemProjektVerzeichnisstruktur_Click);
+			// 
+			// toolStripSeparator2
+			// 
+			this.toolStripSeparator2.Name = "toolStripSeparator2";
+			this.toolStripSeparator2.Size = new System.Drawing.Size(333, 6);
+			// 
+			// toolStripMenuItemPfadvariabele
+			// 
+			this.toolStripMenuItemPfadvariabele.Name = "toolStripMenuItemPfadvariabele";
+			this.toolStripMenuItemPfadvariabele.Size = new System.Drawing.Size(336, 22);
+			this.toolStripMenuItemPfadvariabele.Text = "Pfadvariable einfügen...";
+			this.toolStripMenuItemPfadvariabele.Click += new System.EventHandler(this.toolStripMenuItemPfadvariabeleItem_Click);
+			// 
+			// label1
+			// 
+			this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.label1.AutoSize = true;
+			this.label1.Location = new System.Drawing.Point(9, 321);
+			this.label1.Name = "label1";
+			this.label1.Size = new System.Drawing.Size(80, 13);
+			this.label1.TabIndex = 4;
+			this.label1.Text = "Zielverzeichnis:";
+			// 
+			// btnOrdnerWählen
+			// 
+			this.btnOrdnerWählen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.btnOrdnerWählen.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+			this.btnOrdnerWählen.Location = new System.Drawing.Point(684, 335);
+			this.btnOrdnerWählen.Name = "btnOrdnerWählen";
+			this.btnOrdnerWählen.Size = new System.Drawing.Size(28, 24);
+			this.btnOrdnerWählen.TabIndex = 5;
+			this.btnOrdnerWählen.Text = "...";
+			this.btnOrdnerWählen.UseVisualStyleBackColor = true;
+			this.btnOrdnerWählen.Click += new System.EventHandler(this.btnOrdnerWählen_Click);
+			// 
+			// btnOdnerÖffnen
+			// 
+			this.btnOdnerÖffnen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.btnOdnerÖffnen.Location = new System.Drawing.Point(12, 381);
+			this.btnOdnerÖffnen.Name = "btnOdnerÖffnen";
+			this.btnOdnerÖffnen.Size = new System.Drawing.Size(120, 26);
+			this.btnOdnerÖffnen.TabIndex = 9;
+			this.btnOdnerÖffnen.Text = "Verzeichnis &öffnen";
+			this.btnOdnerÖffnen.UseVisualStyleBackColor = true;
+			this.btnOdnerÖffnen.Click += new System.EventHandler(this.btnOdnerÖffnen_Click);
+			// 
+			// btnExtras
+			// 
+			this.btnExtras.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.btnExtras.Location = new System.Drawing.Point(318, 381);
+			this.btnExtras.Name = "btnExtras";
+			this.btnExtras.Size = new System.Drawing.Size(120, 26);
+			this.btnExtras.TabIndex = 6;
+			this.btnExtras.Text = "E&xtras";
+			this.btnExtras.UseVisualStyleBackColor = true;
+			this.btnExtras.Click += new System.EventHandler(this.btnExtras_Click);
+			// 
+			// txtAblageStruktur
+			// 
+			this.txtAblageStruktur.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.txtAblageStruktur.ContextMenuStrip = this.contextMenuAblageStruktur;
+			this.txtAblageStruktur.Location = new System.Drawing.Point(12, 298);
+			this.txtAblageStruktur.Name = "txtAblageStruktur";
+			this.txtAblageStruktur.Size = new System.Drawing.Size(669, 20);
+			this.txtAblageStruktur.TabIndex = 2;
+			// 
+			// contextMenuAblageStruktur
+			// 
+			this.contextMenuAblageStruktur.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripMenuStrukturVerzeichnisebene,
+            this.toolStripMenuStrukturHersteller,
+            this.toolStripMenuStrukturProduktgruppe,
+            this.toolStripMenuStrukturArtikelnummer});
+			this.contextMenuAblageStruktur.Name = "contextMenuZielverzeichnis";
+			this.contextMenuAblageStruktur.Size = new System.Drawing.Size(270, 92);
+			// 
+			// toolStripMenuStrukturVerzeichnisebene
+			// 
+			this.toolStripMenuStrukturVerzeichnisebene.Name = "toolStripMenuStrukturVerzeichnisebene";
+			this.toolStripMenuStrukturVerzeichnisebene.Size = new System.Drawing.Size(269, 22);
+			this.toolStripMenuStrukturVerzeichnisebene.Text = "Verzeichnisebene \'\\\'";
+			this.toolStripMenuStrukturVerzeichnisebene.Click += new System.EventHandler(this.toolStripMenuStrukturVerzeichnisebene_Click);
+			// 
+			// toolStripMenuStrukturHersteller
+			// 
+			this.toolStripMenuStrukturHersteller.Name = "toolStripMenuStrukturHersteller";
+			this.toolStripMenuStrukturHersteller.Size = new System.Drawing.Size(269, 22);
+			this.toolStripMenuStrukturHersteller.Text = "Hersteller \'$(MANUFACTURER)\'";
+			this.toolStripMenuStrukturHersteller.Click += new System.EventHandler(this.toolStripMenuStrukturHersteller_Click);
+			// 
+			// toolStripMenuStrukturProduktgruppe
+			// 
+			this.toolStripMenuStrukturProduktgruppe.Name = "toolStripMenuStrukturProduktgruppe";
+			this.toolStripMenuStrukturProduktgruppe.Size = new System.Drawing.Size(269, 22);
+			this.toolStripMenuStrukturProduktgruppe.Text = "Produktgruppe \'$(PRODUCTGROUP)\'";
+			this.toolStripMenuStrukturProduktgruppe.Click += new System.EventHandler(this.toolStripMenuStrukturProduktgruppe_Click);
+			// 
+			// toolStripMenuStrukturArtikelnummer
+			// 
+			this.toolStripMenuStrukturArtikelnummer.Name = "toolStripMenuStrukturArtikelnummer";
+			this.toolStripMenuStrukturArtikelnummer.Size = new System.Drawing.Size(269, 22);
+			this.toolStripMenuStrukturArtikelnummer.Text = "Artikelnummer \'$(PARTNR)\'";
+			this.toolStripMenuStrukturArtikelnummer.Click += new System.EventHandler(this.toolStripMenuStrukturArtikelnummer_Click);
+			// 
+			// label2
+			// 
+			this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.label2.AutoSize = true;
+			this.label2.Location = new System.Drawing.Point(9, 281);
+			this.label2.Name = "label2";
+			this.label2.Size = new System.Drawing.Size(78, 13);
+			this.label2.TabIndex = 4;
+			this.label2.Text = "Ablagestruktur:";
+			// 
+			// btnAblageStukturWählen
+			// 
+			this.btnAblageStukturWählen.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.btnAblageStukturWählen.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+			this.btnAblageStukturWählen.Location = new System.Drawing.Point(684, 294);
+			this.btnAblageStukturWählen.Name = "btnAblageStukturWählen";
+			this.btnAblageStukturWählen.Size = new System.Drawing.Size(28, 24);
+			this.btnAblageStukturWählen.TabIndex = 3;
+			this.btnAblageStukturWählen.Text = "...";
+			this.btnAblageStukturWählen.UseVisualStyleBackColor = true;
+			this.btnAblageStukturWählen.Click += new System.EventHandler(this.btnAblageStukturWählen_Click);
+			// 
+			// frmDocumentationTool
+			// 
+			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+			this.CancelButton = this.btnAbbrechen;
+			this.ClientSize = new System.Drawing.Size(726, 419);
+			this.Controls.Add(this.btnExtras);
+			this.Controls.Add(this.btnOdnerÖffnen);
+			this.Controls.Add(this.btnAblageStukturWählen);
+			this.Controls.Add(this.btnOrdnerWählen);
+			this.Controls.Add(this.label2);
+			this.Controls.Add(this.label1);
+			this.Controls.Add(this.txtAblageStruktur);
+			this.Controls.Add(this.txtZielverzeichnis);
+			this.Controls.Add(this.btnKopieren);
+			this.Controls.Add(this.listView);
+			this.Controls.Add(this.btnAbbrechen);
+			this.MaximizeBox = false;
+			this.MinimizeBox = false;
+			this.Name = "frmDocumentationTool";
+			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+			this.Text = "Documentation-Tool";
+			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmDocumentationTool_FormClosing);
+			this.Load += new System.EventHandler(this.frmDocumentationTool_Load);
+			this.contextMenuListView.ResumeLayout(false);
+			this.contextMenuZielverzeichnis.ResumeLayout(false);
+			this.contextMenuAblageStruktur.ResumeLayout(false);
+			this.ResumeLayout(false);
+			this.PerformLayout();
 
 	}
 
@@ -345,19 +438,61 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 
 	private int sortColumn = -1;
 
-	//Skript wird entladen
-	[DeclareUnregister]
-	public void OnUnRegisterScript()
-	{
-		SettingsDelete();
-	}
+	//RibbonBar Einträge dfinieren
+	//string m_TabName = "Werkzeuge";
+	//string m_commandGroupName = "Erweiterungen";
+//	string m_commandName = "Dokumentations-Tool";
 
-	//[DeclareMenu()]
-	//public void Menupunkt()
-	//{
-	//	Eplan.EplApi.Gui.Menu oMenu = new Eplan.EplApi.Gui.Menu();
-	//	oMenu.AddMenuItem("Dokumentations-Tool...", "Documentation_Tool_Start", "Externe Dokumente ermitteln und kopieren", 35379, 1, false, false);
-	//}
+	// //Skript wird geladen
+	// [DeclareRegister]
+	// public void OnRegisterScript()
+	// {
+	// 	var newTab = new Eplan.EplApi.Gui.RibbonBar().Tabs.FirstOrDefault(item => item.Name == m_TabName);
+	// 	if (newTab == null) //Tab noch nicht vorhanden, dann neu erzeugen
+	// 	{
+	// 		newTab = new Eplan.EplApi.Gui.RibbonBar().AddTab(m_TabName);
+	// 	}
+	// 	var commandGroup = newTab.CommandGroups.FirstOrDefault(item => item.Name == m_commandGroupName);
+	// 	if (commandGroup == null) //CommandGroup noch nicht vorhanden, dann neu erzeugen
+	// 	{
+	// 		commandGroup = newTab.AddCommandGroup(m_commandGroupName);
+	// 	}
+	// 	Eplan.EplApi.Gui.RibbonIcon ribbonIcon = new Eplan.EplApi.Gui.RibbonIcon(Eplan.EplApi.Gui.CommandIcon.TaskList); //Icon festlegen
+	// 	commandGroup.AddCommand(m_commandName, "Documentation_Tool_Start", m_commandName, "Externe Dokumente ermitteln und kopieren", ribbonIcon);
+	// }
+
+	// //Skript wird entladen
+	// [DeclareUnregister]
+	// public void OnUnRegisterScript()
+	// {
+	// 	//Einstellungen entfernen
+	// 	SettingsDelete();
+
+	// 	//Command entfernen
+	// 	var vTab = new Eplan.EplApi.Gui.RibbonBar().Tabs.FirstOrDefault(item => item.Name == m_TabName);
+	// 	if (vTab != null)
+	// 	{
+	// 		var commandGroup = vTab.CommandGroups.FirstOrDefault(item => item.Name == m_commandGroupName);
+	// 		if (commandGroup != null)
+	// 		{
+	// 			var command = commandGroup.Commands.Values.FirstOrDefault(item => item.Text == m_commandName);
+	// 			if (command != null)
+	// 			{
+	// 				command.Remove();
+	// 			}
+	// 			//Wenn CommandGroup leer ist diese auch entfernen
+	// 			if (commandGroup.Commands.Count == 0)
+	// 			{
+	// 				commandGroup.Remove();
+	// 			}
+	// 		}
+	// 		//Wenn Tab leer ist dieses auch entfernen
+	// 		if (vTab.Commands.Count == 0)
+	// 		{
+	// 			vTab.Remove();
+	// 		}
+	// 	}
+	// }
 
 	[Start]
 	//[DeclareAction("Documentation_Tool_Start")]
@@ -391,13 +526,9 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 		{
 			this.Width = oSettings.GetNumericSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.Width", 0);
 		}
-		if (oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuHerstellerVerzeichnis"))
+		if (oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtAblageStruktur"))
 		{
-			this.toolStripMenuHerstellerVerzeichnis.Checked = oSettings.GetBoolSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuHerstellerVerzeichnis", 0);
-		}
-		if (oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuArtikelnummerVerzeichnis"))
-		{
-			this.toolStripMenuArtikelnummerVerzeichnis.Checked = oSettings.GetBoolSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuArtikelnummerVerzeichnis", 0);
+			this.txtAblageStruktur.Text = oSettings.GetStringSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtAblageStruktur", 0);
 		}
 #endif
 
@@ -432,7 +563,12 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 #if DEBUG
 		txtZielverzeichnis.Text = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\Test";
 #else
-		txtZielverzeichnis.Text = PathMap.SubstitutePath(@"$(DOC)");
+		txtZielverzeichnis.Text = "$(DOC)";
+		//letztes Zielverzeichnis aus Settings lesen
+		if (oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtZielverzeichnis"))
+		{
+			this.txtZielverzeichnis.Text = oSettings.GetStringSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtZielverzeichnis", 0);
+		}
 #endif
 
 		// Temporären Dateinamen festlegen
@@ -514,6 +650,7 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 			{
 				string sArtikelnummer = string.Empty;
 				string sHersteller = string.Empty;
+				string sProduktgruppe = string.Empty;
 				//Es sind noch weitere Attribute vorhanden 
 				while (XMLReader.MoveToNextAttribute()) //nächstes
 				{
@@ -525,9 +662,13 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 					{
 						sHersteller = XMLReader.Value;
 					}
+					if (XMLReader.Name == "P22041") // Artikel (eingelagert) Produktgruppe)
+					{
+						sProduktgruppe = TranslateProductgroup(XMLReader.Value);
+					}
 					if (
 						XMLReader.Name == "A2082" || // Hyperlink Dokument
-						//XMLReader.Name == "P11058" || // Fremddokument
+													 //XMLReader.Name == "P11058" || // Fremddokument
 						XMLReader.Name == "P22149" || // Artikel (eingelagert) Externes Dokument 1
 						XMLReader.Name == "P22150" || // Artikel (eingelagert) Externes Dokument 2
 						XMLReader.Name == "P22151" || // Artikel (eingelagert) Externes Dokument 3
@@ -591,6 +732,7 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 							objListViewItem.SubItems.Add(sDateiBeschreibung); //Datei Beschreibung
 							objListViewItem.SubItems.Add(sHersteller); //Hersteller
 							objListViewItem.SubItems.Add(sArtikelnummer); //Artikelnummer
+							objListViewItem.SubItems.Add(sProduktgruppe); //Produktgruppe
 							objListViewItem.Checked = true;
 
 							//Prüfen ob Datei vorhanden
@@ -687,7 +829,7 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 	private void btnOrdnerWählen_Click(object sender, EventArgs e)
 	{
 		string sZielverzeichnis = txtZielverzeichnis.Text;
-		sZielverzeichnis = OrdnerAuswählen(txtZielverzeichnis.Text);
+		sZielverzeichnis = OrdnerAuswählen(PathMap.SubstitutePath(txtZielverzeichnis.Text));
 		if (sZielverzeichnis != string.Empty)
 		{
 			txtZielverzeichnis.Text = sZielverzeichnis;
@@ -697,23 +839,46 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 	//Button: Zielverzeichnis im Explorer öffnen
 	private void btnOdnerÖffnen_Click(object sender, EventArgs e)
 	{
-		//Start Windows-Explorer mit Parameter
-		System.Diagnostics.Process.Start("explorer", "/e," + txtZielverzeichnis.Text);
+		string sTargetPath = PathMap.SubstitutePath(txtZielverzeichnis.Text);
+
+		//gibt es das Ziel auch?
+		if (!Directory.Exists(sTargetPath))
+		{
+			//Hinweis, Ziel gibt es nicht
+#if DEBUG
+			MessageBox.Show("Das Zielverzeichnis [" + sTargetPath + "] ist nicht auf dem Datenträger vorhanden!", "Documentation-Tool", MessageBoxButtons.OK, MessageBoxIcon.Information);
+#else
+			new Decider().Decide(
+				EnumDecisionType.eOkDecision, // type
+				"Das Zielverzeichnis [" + sTargetPath + "] ist nicht auf dem Datenträger vorhanden!",
+				"Documentation-Tool",
+				EnumDecisionReturn.eOK, // selected Answer
+				EnumDecisionReturn.eOK); // Answer if quite-mode on
+#endif
+		}
+		//Es gibt dasZiel
+		if (Directory.Exists(sTargetPath))
+		{
+			//Start Windows-Explorer mit Parameter
+			System.Diagnostics.Process.Start("explorer", "/e," + sTargetPath);
+		}
 		return;
 	}
 
 	//Button: Dokumente kopieren
 	private void btnKopieren_Click(object sender, EventArgs e)
 	{
+		string sTargetPath = PathMap.SubstitutePath(txtZielverzeichnis.Text);
+
 		//gibt es das Ziel auch?
-		if (!Directory.Exists(txtZielverzeichnis.Text))
+		if (!Directory.Exists(sTargetPath))
 		{
 			//Hinweis, Ziel gibt es nicht, anlegen?
 #if DEBUG
-			DialogResult dialogResult = MessageBox.Show("Das Zielverzeichnis [" + txtZielverzeichnis.Text + "] ist nicht auf dem Datenträger vorhanden!\n\nSoll dieses nun angelegt werden?", "Documentation-Tool", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+			DialogResult dialogResult = MessageBox.Show("Das Zielverzeichnis [" + sTargetPath + "] ist nicht auf dem Datenträger vorhanden!\n\nSoll dieses nun angelegt werden?", "Documentation-Tool", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
 			if (dialogResult == DialogResult.Yes)
 			{
-				Directory.CreateDirectory(txtZielverzeichnis.Text);
+				Directory.CreateDirectory(sTargetPath);
 			}
 			else if (dialogResult == DialogResult.No)
 			{
@@ -723,14 +888,14 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 			Decider decider = new Decider();
 			EnumDecisionReturn decision = decider.Decide(
 				EnumDecisionType.eYesNoDecision, // type
-				"Das Zielverzeichnis [" + txtZielverzeichnis.Text + "] ist nicht auf dem Datenträger vorhanden!\n\nSoll dieses nun angelegt werden?",
+				"Das Zielverzeichnis [" + sTargetPath + "] ist nicht auf dem Datenträger vorhanden!\n\nSoll dieses nun angelegt werden?",
 				"Documentation-Tool",
 				EnumDecisionReturn.eYES, // selected Answer
 				EnumDecisionReturn.eYES); // Answer if quite-mode on
 
 			if (decision == EnumDecisionReturn.eYES)
 			{
-				Directory.CreateDirectory(txtZielverzeichnis.Text);
+				Directory.CreateDirectory(sTargetPath);
 			}
 			else if (decision == EnumDecisionReturn.eNO)
 			{
@@ -740,7 +905,7 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 		}
 
 		//Es gibt dasZiel
-		if (Directory.Exists(txtZielverzeichnis.Text))
+		if (Directory.Exists(sTargetPath))
 		{
 			ListView.CheckedListViewItemCollection checkedItems = listView.CheckedItems;
 #if !DEBUG
@@ -757,50 +922,41 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 			{
 				oProgress.BeginPart(nActionsPercent, "Kopiere: " + item.Text);
 #endif
-				string sTargetPath = txtZielverzeichnis.Text;
+				string sTargetPathCopy = string.Empty;
+				string sTemp = string.Empty;
 
-				//Hersteller-Verzeichnis hinzufügen
-				if (toolStripMenuHerstellerVerzeichnis.Checked)
+				try
 				{
-					try
+					sTargetPathCopy = sTargetPath + txtAblageStruktur.Text;
+
+					//Hersteller hinzufügen
+					sTemp = item.SubItems[2].Text;
+					sTemp = RemoveIlegaleCharackter(sTemp); //Verzeichnisnamen von ungültigen Zeichen bereinigen
+					sTargetPathCopy = sTargetPathCopy.Replace("$(MANUFACTURER)", sTemp);
+
+					//Produktgruppe hinzufügen
+					sTemp = item.SubItems[4].Text;
+					sTemp = RemoveIlegaleCharackter(sTemp); //Verzeichnisnamen von ungültigen Zeichen bereinigen
+					sTargetPathCopy = sTargetPathCopy.Replace("$(PRODUCTGROUP)", sTemp);
+
+					//Artikelnummer hinzufügen
+					sTemp = item.SubItems[3].Text;
+					sTemp = RemoveIlegaleCharackter(sTemp); //Verzeichnisnamen von ungültigen Zeichen bereinigen
+					sTargetPathCopy = sTargetPathCopy.Replace("$(PARTNR)", sTemp);
+
+					//Falls es das Verzeichnis nicht gibt erst anlegen dann kopieren
+					if (!Directory.Exists(sTargetPathCopy))
 					{
-						string sTemp = item.SubItems[2].Text;
-						sTemp = RemoveIlegaleCharackter(sTemp); //Verzeichnisnamen von ungültigen Zeichen bereinigen
-						sTargetPath = Path.Combine(sTargetPath, sTemp);
-						if (!Directory.Exists(sTargetPath)) //Verzeichnis anlegen wenn noch nicht vorhanden
-						{
-							Directory.CreateDirectory(sTargetPath);
-						}
+						Directory.CreateDirectory(sTargetPathCopy);
 					}
-					catch (Exception exc)
-					{
-						String strMessage = exc.Message;
-						MessageBox.Show("Exception: " + strMessage + "\n\n" + sTargetPath, "Documentation-Tool, btnKopieren", MessageBoxButtons.OK, MessageBoxIcon.Error);
-					}
+					DocumentCopy(item.Text, sTargetPathCopy);
+				}
+				catch (Exception exc)
+				{
+					String strMessage = exc.Message;
+					MessageBox.Show("Exception: " + strMessage + "\n\n" + sTargetPathCopy, "Documentation-Tool, btnKopieren", MessageBoxButtons.OK, MessageBoxIcon.Error);
 				}
 
-				//Artikelnummer-Verzeichnis hinzufügen
-				if (toolStripMenuArtikelnummerVerzeichnis.Checked)
-				{
-					try
-					{
-						string sTemp = item.SubItems[3].Text;
-						sTemp = RemoveIlegaleCharackter(sTemp); //Verzeichnisnamen von ungültigen Zeichen bereinigen
-						sTargetPath = Path.Combine(sTargetPath, sTemp);
-
-						if (!Directory.Exists(sTargetPath)) //Verzeichnis anlegen wenn noch nicht vorhanden
-						{
-							Directory.CreateDirectory(sTargetPath);
-						}
-					}
-					catch (Exception exc)
-					{
-						String strMessage = exc.Message;
-						MessageBox.Show("Exception: " + strMessage + "\n\n" + sTargetPath, "Documentation-Tool, btnKopieren", MessageBoxButtons.OK, MessageBoxIcon.Error);
-					}
-				}
-
-				DocumentCopy(item.Text, sTargetPath);
 
 #if !DEBUG
 			oProgress.EndPart();
@@ -813,6 +969,12 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 			Close();
 			return;
 		}
+	}
+
+	//Button: AblageStukturWählen (Kontextmenü AblageStuktur anzeigen)
+	private void btnAblageStukturWählen_Click(object sender, EventArgs e)
+	{
+		contextMenuAblageStruktur.Show(btnAblageStukturWählen, 0, 0 - (contextMenuAblageStruktur.Height - btnAblageStukturWählen.Height));
 	}
 
 	//Button: Extras (Kontextmenü Zielverzeichnis anzeigen)
@@ -862,6 +1024,7 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 #endif
 		if (sProjectePath != string.Empty && sSelectedProjectPath != string.Empty)
 		{
+
 			string sTemp = string.Empty;
 
 			sTemp = sSelectedProjectPath.Replace(sProjectePath, string.Empty); //Projekte-Verzeichnis aus Projekt-Verzeichnis entfernen
@@ -920,6 +1083,51 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 			txtZielverzeichnis.Select(); // to Set Focus
 			txtZielverzeichnis.Select(txtZielverzeichnis.Text.Length, 0); //to set cursor at the end of textbox
 		}
+	}
+
+	//Kontextmenü 'Pfadvariable einfügen'
+	private void toolStripMenuItemPfadvariabeleItem_Click(object sender, EventArgs e)
+	{
+#if !DEBUG
+		string value = null;
+		ActionCallingContext actionCallingContext = new ActionCallingContext();
+		actionCallingContext.AddParameter("DialogName", "XSDSelectDBPathVariableDialog");
+		new CommandLineInterpreter().Execute("GfDialogManagerDoModal", actionCallingContext);
+		actionCallingContext.GetParameter("selectedpathvariable", ref value);
+		txtZielverzeichnis.Text += value;
+#endif
+	}
+	
+	//Struktur: Verzeichnisebene hinzufügen
+	private void toolStripMenuStrukturVerzeichnisebene_Click(object sender, EventArgs e)
+	{
+		txtAblageStruktur.Focus();
+		txtAblageStruktur.Text = txtAblageStruktur.Text.Insert(txtAblageStruktur.SelectionStart, @"\");
+		txtAblageStruktur.SelectionStart = txtAblageStruktur.Text.Length;
+	}
+
+	//Struktur: Hersteller hinzufügen
+	private void toolStripMenuStrukturHersteller_Click(object sender, EventArgs e)
+	{
+		txtAblageStruktur.Focus();
+		txtAblageStruktur.Text = txtAblageStruktur.Text.Insert(txtAblageStruktur.SelectionStart, "$(MANUFACTURER)");
+		txtAblageStruktur.SelectionStart = txtAblageStruktur.Text.Length;
+	}
+
+	//Struktur: Produktgruppe hinzufügen
+	private void toolStripMenuStrukturProduktgruppe_Click(object sender, EventArgs e)
+	{
+		txtAblageStruktur.Focus();
+		txtAblageStruktur.Text = txtAblageStruktur.Text.Insert(txtAblageStruktur.SelectionStart, "$(PRODUCTGROUP)");
+		txtAblageStruktur.SelectionStart = txtAblageStruktur.Text.Length;
+	}
+
+	//Struktur: Artikelnummer hinzufügen
+	private void toolStripMenuStrukturArtikelnummer_Click(object sender, EventArgs e)
+	{
+		txtAblageStruktur.Focus();
+		txtAblageStruktur.Text = txtAblageStruktur.Text.Insert(txtAblageStruktur.SelectionStart, "$(PARTNR)");
+		txtAblageStruktur.SelectionStart = txtAblageStruktur.Text.Length;
 	}
 
 	//Kontextmenü listView öffnen
@@ -994,46 +1202,49 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 		}
 		oSettings.SetNumericSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.Width", this.Width, 0);
 
-		if (!oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuHerstellerVerzeichnis"))
+		if (!oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtAblageStruktur"))
 		{
-			oSettings.AddBoolSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuHerstellerVerzeichnis",
-				new bool[] { },
+			oSettings.AddStringSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtAblageStruktur",
+				new string[] { },
+				new string[] { },
 				ISettings.CreationFlag.Insert);
 		}
-		oSettings.SetBoolSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuHerstellerVerzeichnis", toolStripMenuHerstellerVerzeichnis.Checked, 0);
+		oSettings.SetStringSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtAblageStruktur", txtAblageStruktur.Text, 0);
 
-		if (!oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuArtikelnummerVerzeichnis"))
+		if (!oSettings.ExistSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtZielverzeichnis"))
 		{
-			oSettings.AddBoolSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuArtikelnummerVerzeichnis",
-				new bool[] { },
+			oSettings.AddStringSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtZielverzeichnis",
+				new string[] { },
+				new string[] { },
 				ISettings.CreationFlag.Insert);
 		}
-		oSettings.SetBoolSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.toolStripMenuArtikelnummerVerzeichnis", toolStripMenuArtikelnummerVerzeichnis.Checked, 0);
+		oSettings.SetStringSetting("USER.SCRIPTS.DOCUMENTATION_TOOL.txtZielverzeichnis", txtZielverzeichnis.Text, 0);
+
 #endif
 		return;
 	}
 
-	//Einstellungen löschen
-	public void SettingsDelete()
-	{
-		DialogResult Result = MessageBox.Show("Sollen die Einstellungen wirklich aus EPLAN gelöscht werden?", "Documentation-Tool, Einstellungen löschen", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-		if (Result == System.Windows.Forms.DialogResult.Yes)
-		{
-			//Settings löschen
-			Eplan.EplApi.Base.SettingNode oSettingNode = new Eplan.EplApi.Base.SettingNode("USER.SCRIPTS.DOCUMENTATION_TOOL");
-
-			MessageBox.Show("Es wurden " + oSettingNode.GetCountOfSettings().ToString() + " Einstellungen gelöscht.", "Documentation-Tool, Einstellungen löschen", MessageBoxButtons.OK, MessageBoxIcon.Information);
-			oSettingNode.DeleteNode();
-		}
-		return;
-	}
+	// //Einstellungen löschen
+	// public void SettingsDelete()
+	// {
+	// 	DialogResult Result = MessageBox.Show("Sollen die Einstellungen wirklich aus EPLAN gelöscht werden?", "Documentation-Tool, Einstellungen löschen", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+	// 	if (Result == System.Windows.Forms.DialogResult.Yes)
+	// 	{
+	// 		//Anzahl der zu löschenden Settings anzeigen
+	// 		Eplan.EplApi.Base.SettingNode oSettingNode = new Eplan.EplApi.Base.SettingNode("USER.SCRIPTS.DOCUMENTATION_TOOL");
+	// 		MessageBox.Show("Es wurden " + oSettingNode.GetCountOfSettings().ToString() + " Einstellungen gelöscht.", "Documentation-Tool, Einstellungen löschen", MessageBoxButtons.OK, MessageBoxIcon.Information);
+	// 		//Settings löschen
+	// 		oSettingNode.ResetNode();
+	// 	}
+	// 	return;
+	// }
 
 	//ungültige Zeichen aus Dateinamen entfernen
 	private static string RemoveIlegaleCharackter(string fileName)
 	{
 		string illegal = fileName;
 		string invalid = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
-		
+
 		foreach (char c in invalid)
 		{
 			illegal = illegal.Replace(c.ToString(), "");
@@ -1041,6 +1252,136 @@ public partial class frmDocumentationTool : System.Windows.Forms.Form
 
 		return illegal;
 	}
+
+	//Produktgruppe Zahl in Klartext umwandeln
+	private static string TranslateProductgroup(string Productgroup)
+	{
+		switch (Productgroup)
+		{
+			case "0": return "Undefiniert";
+			case "1": return "Allgemeine";
+			case "2": return "Relais, Schütze";
+			case "3": return "Klemmen";
+			case "4": return "Stecker";
+			case "5": return "Umformer";
+			case "6": return "Schutzeinrichtungen";
+			case "7": return "Röhren, Halbleiter";
+			case "8": return "Meldeeinrichtungen";
+			case "9": return "Motoren";
+			case "10": return "Messgeräte, Prüfeinrichtungen";
+			case "11": return "Widerstände";
+			case "12": return "Sensorik, Schalter und Taster";
+			case "13": return "Transformatoren";
+			case "14": return "Modulatoren";
+			case "15": return "Elektrisch betätigte mechanische Einrichtungen";
+			case "16": return "Elektrotechnik Sonderbauteile";
+			case "17": return "Verschiedenes";
+			case "18": return "Kondensatoren";
+			case "19": return "Logikbauteile";
+			case "20": return "Spannungsquelle und Generator";
+			case "21": return "Induktivitäten";
+			case "22": return "Verstärker, Regler";
+			case "23": return "Starkstrom - Schaltgeräte";
+			case "24": return "Abschlüsse, Filter";
+			case "25": return "Übertragungswege";
+			case "26": return "SPS";
+			case "29": return "Kabel";
+			case "30": return "Aggregate und Anlagen";
+			case "32": return "Aktoren, allgemein";
+			case "33": return "Fluidmotor";
+			case "34": return "Filter";
+			case "35": return "Fluid Control Terminal";
+			case "36": return "Kupplungen";
+			case "37": return "Verbindungen";
+			case "38": return "Messanschlüsse";
+			case "39": return "Messgeräte";
+			case "40": return "Pumpen";
+			case "41": return "Signalaufnehmer";
+			case "42": return "Fluid Sonderbauteile";
+			case "43": return "Speicher";
+			case "44": return "Ventile";
+			case "46": return "Wärmetauscher";
+			case "47": return "Zubehör";
+			case "48": return "Anschlussplatten";
+			case "49": return "Gehäuse";
+			case "50": return "Gehäusezubehör Außenanbau";
+			case "51": return "Gehäusezubehör Innenanbau";
+			case "52": return "Verschlusssysteme";
+			case "53": return "Kabelkanäle";
+			case "54": return "Sammelschienen";
+			case "55": return "Schaltschrank";
+			case "56": return "Abzugshaube";
+			case "57": return "Elektrolysezelle";
+			case "58": return "Lagerung";
+			case "59": return "Schornstein";
+			case "61": return "Antriebsmaschine";
+			case "62": return "Absperrarmatur";
+			case "63": return "Dreiwegearmatur";
+			case "64": return "Rückschlagarmatur";
+			case "65": return "Behälter";
+			case "66": return "Behälteranschluss";
+			case "67": return "Abscheider";
+			case "68": return "Filter";
+			case "69": return "Sieb";
+			case "70": return "Förderer";
+			case "71": return "Heber";
+			case "72": return "Transporter";
+			case "73": return "Behälter - Mantel";
+			case "74": return "Behälter - Rohrschlange";
+			case "75": return "Dampfkessel";
+			case "76": return "Kühler";
+			case "77": return "Ofen";
+			case "78": return "Trockner";
+			case "79": return "Verdampfer";
+			case "80": return "Wärmetauscher";
+			case "81": return "Kneter";
+			case "82": return "Mischer";
+			case "83": return "Rührer";
+			case "84": return "Kompressor / Verdichter";
+			case "85": return "Pumpen";
+			case "86": return "Vakuumpumpe";
+			case "87": return "Ventilator";
+			case "89": return "Rohrleitungsteil";
+			case "91": return "Zentrifuge";
+			case "92": return "Messeinrichtung";
+			case "93": return "Waage";
+			case "94": return "Formgeber";
+			case "95": return "Sichter";
+			case "96": return "Sortierer";
+			case "97": return "Zerkleinerer";
+			case "98": return "Zuteiler";
+			case "99": return "Feldverteiler";
+			case "100": return "Verbindungen";
+			case "101": return "Montageplatten";
+			case "102": return "Heizung";
+			case "103": return "Leuchte";
+			case "104": return "Heizung";
+			case "105": return "Zylinder";
+			case "106": return "Bremse";
+			case "107": return "Gleichrichter";
+			case "108": return "Bremse";
+			case "109": return "Kupplungen";
+			case "110": return "Ventile";
+			case "111": return "Druckübersetzer";
+			case "112": return "Abscheider";
+			case "113": return "Leitungsverteiler / -verbinder";
+			case "114": return "Zubehör";
+			case "115": return "Meldeeinrichtungen";
+			case "116": return "Benutzerdefinierte Schiene";
+			case "117": return "19 Zoll - Ausbautechnik";
+			case "118": return "Strecke(Topologie)";
+			case "119": return "Verlegepunkt(Topologie)";
+			case "121": return "Verbindungen";
+			case "125": return "Verlegezubehör";
+			case "126": return "Montageanordnung";
+			case "127": return "Leitungen / Pakete";
+			case "128": return "Leitungen / Pakete";
+			case "129": return "Leitungsverteiler / -verbinder";
+			case "130": return "Leitungsverteiler / -verbinder";
+			default: return "Unbekannte Produktgruppe";
+		}
+	}
+
 }
 
 // Implements the manual sorting of items by columns.
